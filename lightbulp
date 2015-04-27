@@ -1,0 +1,58 @@
+#!/bin/bash
+
+GPIO=17
+
+function usage {
+    echo "Usage: lightbulp on|off|status"
+}
+
+if [ $# -lt 1 ]; then
+    usage
+    exit
+fi
+
+if [[ $EUID -ne 0 ]]; then
+  echo "must be root" 2>&1
+  exit 1
+fi
+
+if [ ! -d /sys/class/gpio/gpio$GPIO ]; then
+    echo $GPIO > /sys/class/gpio/export
+fi
+
+cd /sys/class/gpio/gpio$GPIO
+
+function status {
+    if [ -e direction ]; then
+        if [ `cat direction` == "out" ]; then
+            if [ -e value ]; then
+                if [ `cat value` == "0" ]; then
+                    echo "light bulb is on"
+                    return
+                fi
+            fi
+        fi
+    fi
+
+    echo "light bulb is off"
+}
+
+case "$1" in
+"on")
+    echo 'out' > direction
+    echo '0' > value
+    status
+    ;;
+"off")
+    if [ -e direction ]; then
+        if [ `cat direction` == "out" ]; then
+            echo '1' > value
+        fi
+    fi
+    status
+    ;;
+"status") status
+    ;;
+*) usage
+    ;;
+esac
